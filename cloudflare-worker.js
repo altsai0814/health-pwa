@@ -9,17 +9,35 @@
  * 5. Paste the URL into the app's Settings → Proxy URL field
  */
 
+// 只允許以下來源，部署前請更新為你自己的域名
+const ALLOWED_ORIGINS = [
+  'https://altsai0814.github.io',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+
+function corsHeaders(origin) {
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'Content-Type, x-claude-api-key',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
+
 export default {
   async fetch(request) {
+    const origin = request.headers.get('Origin') || '';
+
+    // 拒絕非白名單來源
+    if (!ALLOWED_ORIGINS.includes(origin)) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, x-claude-api-key',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        },
-      });
+      return new Response(null, { headers: corsHeaders(origin) });
     }
 
     if (request.method !== 'POST') {
@@ -62,9 +80,7 @@ export default {
       status: response.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, x-claude-api-key',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        ...corsHeaders(origin),
       },
     });
   },

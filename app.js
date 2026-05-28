@@ -325,7 +325,11 @@ const App = {
     document.getElementById('pushToggle').checked = Storage.get(KEYS.PUSH_ENABLED) === 'true';
     document.getElementById('reminderTime').value  = Storage.get(KEYS.REMIND_TIME) || '20:00';
     document.getElementById('vapidKey').value      = Storage.get(KEYS.VAPID_KEY) || '';
-    document.getElementById('claudeApiKey').value  = Storage.get(KEYS.CLAUDE_KEY) || '';
+    // 不回填 API Key 到欄位，只顯示是否已設定的狀態
+    const hasKey = !!Storage.get(KEYS.CLAUDE_KEY);
+    const keyInput = document.getElementById('claudeApiKey');
+    keyInput.value = '';
+    keyInput.placeholder = hasKey ? '已設定（輸入新金鑰以更換）' : 'sk-ant-...';
     document.getElementById('proxyUrl').value      = Storage.get(KEYS.PROXY_URL) || '';
 
     // PWA standalone detection
@@ -555,8 +559,8 @@ const App = {
       const proxy = document.getElementById('proxyUrl').value.trim();
       const vapid = document.getElementById('vapidKey').value.trim();
 
+      // 只有輸入了新值才更新，空白代表「保留舊的」
       if (key) Storage.set(KEYS.CLAUDE_KEY, key);
-      else Storage.remove(KEYS.CLAUDE_KEY);
 
       if (proxy) Storage.set(KEYS.PROXY_URL, proxy);
       else Storage.remove(KEYS.PROXY_URL);
@@ -564,6 +568,9 @@ const App = {
       if (vapid) Storage.set(KEYS.VAPID_KEY, vapid);
       else Storage.remove(KEYS.VAPID_KEY);
 
+      // 儲存後清空欄位，避免金鑰留在 DOM 中
+      document.getElementById('claudeApiKey').value = '';
+      App.renderSettings();
       showToast('AI 設定已儲存 ✓');
     });
 
@@ -651,7 +658,21 @@ function sendLocalNotification() {
 }
 
 // ─── Claude AI Sync ────────────────────────────────────────────────
+let lastSyncTime = 0;
+const SYNC_COOLDOWN_MS = 60_000;
+
 async function syncWithClaude(apiKey, proxyUrl) {
+  const now = Date.now();
+  const elapsed = now - lastSyncTime;
+  if (elapsed < SYNC_COOLDOWN_MS) {
+    const wait = Math.ceil((SYNC_COOLDOWN_MS - elapsed) / 1000);
+    showToast(`請等待 ${wait} 秒後再分析`);
+    document.getElementById('aiLoading').style.display = 'none';
+    document.getElementById('claudeModalOverlay').classList.remove('visible');
+    setTimeout(() => { document.getElementById('claudeModalOverlay').hidden = true; }, 300);
+    return;
+  }
+  lastSyncTime = now;
   const summary = buildDailySummary();
   const loadingEl = document.getElementById('aiLoading');
   const contentEl = document.getElementById('aiContent');
@@ -685,20 +706,44 @@ async function syncWithClaude(apiKey, proxyUrl) {
 
     loadingEl.style.display = 'none';
     contentEl.hidden = false;
-    contentEl.innerHTML = `<div class="ai-text">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
-      <div class="ai-timestamp">分析時間：${new Date().toLocaleString('zh-TW')}</div>`;
+    contentEl.textContent = '';
+
+    // 用 textContent 安全建立 DOM，避免 XSS
+    const aiText = document.createElement('div');
+    aiText.className = 'ai-text';
+    // 換行轉為 <br>，逐段安全插入
+    text.split('\n').forEach((line, i, arr) => {
+      aiText.appendChild(document.createTextNode(line));
+      if (i < arr.length - 1) aiText.appendChild(document.createElement('br'));
+    });
+
+    const aiTs = document.createElement('div');
+    aiTs.className = 'ai-timestamp';
+    aiTs.textContent = `分析時間：${new Date().toLocaleString('zh-TW')}`;
+
+    contentEl.appendChild(aiText);
+    contentEl.appendChild(aiTs);
 
   } catch (err) {
     loadingEl.style.display = 'none';
     errorEl.hidden = false;
-    errorEl.innerHTML = `
-      <div class="ai-error-msg">⚠️ 無法連線到 Claude AI</div>
-      <div class="ai-error-detail">${escapeHtml(err.message)}</div>
-      <div class="ai-error-tip">請確認：<br>
-        1. Claude API 金鑰是否正確<br>
-        2. Cloudflare Worker CORS Proxy 是否已部署<br>
-        3. 網路連線是否正常
-      </div>`;
+    errorEl.textContent = '';
+
+    const errMsg = document.createElement('div');
+    errMsg.className = 'ai-error-msg';
+    errMsg.textContent = '⚠️ 無法連線到 Claude AI';
+
+    const errDetail = document.createElement('div');
+    errDetail.className = 'ai-error-detail';
+    errDetail.textContent = err.message;
+
+    const errTip = document.createElement('div');
+    errTip.className = 'ai-error-tip';
+    errTip.textContent = '請確認：1. Claude API 金鑰是否正確  2. Cloudflare Worker CORS Proxy 是否已部署  3. 網路連線是否正常';
+
+    errorEl.appendChild(errMsg);
+    errorEl.appendChild(errDetail);
+    errorEl.appendChild(errTip);
   }
 }
 
