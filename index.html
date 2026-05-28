@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0891b2" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="健康日記" />
+  <title>健康日記 Health Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Status Bar Spacer (iOS) -->
+  <div class="status-bar-spacer"></div>
+
+  <!-- App Header -->
+  <header class="app-header" id="appHeader">
+    <div class="header-content">
+      <h1 class="header-title" id="headerTitle">今日記錄</h1>
+      <div class="header-actions">
+        <button class="header-btn" id="btnSync" title="同步到 Claude AI" aria-label="AI 分析">
+          🤖
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="app-main">
+
+    <!-- ── TODAY PAGE ─────────────────────────────────────── -->
+    <section class="page active" id="pageTday" role="main" aria-label="今日記錄">
+
+      <!-- Date Display -->
+      <div class="date-banner" id="dateBanner"></div>
+
+      <!-- Weight Card -->
+      <div class="weight-card card" id="weightCard">
+        <div class="weight-card-header">
+          <span class="weight-label">體重</span>
+          <button class="edit-btn" id="btnEditWeight" aria-label="編輯體重">✏️</button>
+        </div>
+        <div class="weight-display" id="weightDisplay">
+          <span class="weight-value" id="weightValue">—</span>
+          <span class="weight-unit">kg</span>
+        </div>
+        <div class="weight-hint" id="weightHint">點擊右上角編輯記錄體重</div>
+        <div class="weight-bmi" id="weightBmi"></div>
+      </div>
+
+      <!-- Meal Cards -->
+      <div class="meals-section">
+        <div class="section-title">三餐飲食</div>
+
+        <!-- Breakfast -->
+        <div class="meal-card card" id="mealCard-breakfast" data-meal="breakfast">
+          <div class="meal-card-header">
+            <div class="meal-info">
+              <span class="meal-icon">🌅</span>
+              <span class="meal-name">早餐</span>
+            </div>
+            <div class="meal-meta">
+              <span class="meal-cal" id="mealCal-breakfast">— kcal</span>
+              <button class="edit-btn" data-meal="breakfast" aria-label="編輯早餐">✏️</button>
+            </div>
+          </div>
+          <div class="meal-content" id="mealContent-breakfast">尚未記錄</div>
+        </div>
+
+        <!-- Lunch -->
+        <div class="meal-card card" id="mealCard-lunch" data-meal="lunch">
+          <div class="meal-card-header">
+            <div class="meal-info">
+              <span class="meal-icon">☀️</span>
+              <span class="meal-name">午餐</span>
+            </div>
+            <div class="meal-meta">
+              <span class="meal-cal" id="mealCal-lunch">— kcal</span>
+              <button class="edit-btn" data-meal="lunch" aria-label="編輯午餐">✏️</button>
+            </div>
+          </div>
+          <div class="meal-content" id="mealContent-lunch">尚未記錄</div>
+        </div>
+
+        <!-- Dinner -->
+        <div class="meal-card card" id="mealCard-dinner" data-meal="dinner">
+          <div class="meal-card-header">
+            <div class="meal-info">
+              <span class="meal-icon">🌙</span>
+              <span class="meal-name">晚餐</span>
+            </div>
+            <div class="meal-meta">
+              <span class="meal-cal" id="mealCal-dinner">— kcal</span>
+              <button class="edit-btn" data-meal="dinner" aria-label="編輯晚餐">✏️</button>
+            </div>
+          </div>
+          <div class="meal-content" id="mealContent-dinner">尚未記錄</div>
+        </div>
+
+      </div><!-- /meals-section -->
+
+      <!-- Daily Summary -->
+      <div class="card summary-card" id="dailySummary">
+        <div class="summary-row">
+          <span class="summary-label">今日總熱量</span>
+          <span class="summary-value" id="totalCalToday">0 kcal</span>
+        </div>
+      </div>
+
+    </section><!-- /pageTday -->
+
+
+    <!-- ── HISTORY PAGE ────────────────────────────────────── -->
+    <section class="page" id="pageHistory" role="main" aria-label="歷史記錄" hidden>
+
+      <!-- Weight Chart -->
+      <div class="chart-card card">
+        <div class="chart-title">近 7 日體重趨勢</div>
+        <div class="chart-container">
+          <canvas id="weightChart" aria-label="體重趨勢圖"></canvas>
+        </div>
+      </div>
+
+      <!-- History List -->
+      <div class="section-title">每日記錄</div>
+      <div class="history-list" id="historyList">
+        <div class="empty-state">暫無記錄資料</div>
+      </div>
+
+    </section><!-- /pageHistory -->
+
+
+    <!-- ── SETTINGS PAGE ──────────────────────────────────── -->
+    <section class="page" id="pageSettings" role="main" aria-label="設定" hidden>
+
+      <!-- Push Notification -->
+      <div class="settings-group card">
+        <div class="settings-group-title">推播提醒</div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span class="settings-icon">🔔</span>
+            <div>
+              <div class="settings-name">每日提醒</div>
+              <div class="settings-desc">未記錄時發送提醒通知</div>
+            </div>
+          </div>
+          <label class="toggle-switch" aria-label="開關每日提醒">
+            <input type="checkbox" id="pushToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-row" id="reminderTimeRow">
+          <div class="settings-label">
+            <span class="settings-icon">⏰</span>
+            <div>
+              <div class="settings-name">提醒時間</div>
+              <div class="settings-desc">每日幾點發送提醒</div>
+            </div>
+          </div>
+          <input type="time" id="reminderTime" class="settings-input-inline" value="20:00" />
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span class="settings-icon">🔑</span>
+            <div>
+              <div class="settings-name">VAPID 公鑰</div>
+              <div class="settings-desc">Web Push 必要（可留空用本地提醒）</div>
+            </div>
+          </div>
+        </div>
+        <input type="text" id="vapidKey" class="settings-input-full"
+               placeholder="Base64 VAPID Public Key（選填）" autocomplete="off" />
+      </div>
+
+      <!-- Claude AI -->
+      <div class="settings-group card">
+        <div class="settings-group-title">Claude AI 健康分析</div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span class="settings-icon">🤖</span>
+            <div>
+              <div class="settings-name">API 金鑰</div>
+              <div class="settings-desc">Anthropic API Key</div>
+            </div>
+          </div>
+        </div>
+        <input type="password" id="claudeApiKey" class="settings-input-full"
+               placeholder="sk-ant-..." autocomplete="off" />
+
+        <div class="settings-row" style="margin-top:12px">
+          <div class="settings-label">
+            <span class="settings-icon">🌐</span>
+            <div>
+              <div class="settings-name">CORS Proxy URL</div>
+              <div class="settings-desc">Cloudflare Worker 網址（必填）</div>
+            </div>
+          </div>
+        </div>
+        <input type="url" id="proxyUrl" class="settings-input-full"
+               placeholder="https://your-worker.workers.dev" autocomplete="off" />
+
+        <button class="btn-primary" id="btnSaveAi" style="margin-top:12px">儲存 AI 設定</button>
+      </div>
+
+      <!-- Data Management -->
+      <div class="settings-group card">
+        <div class="settings-group-title">資料管理</div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span class="settings-icon">📊</span>
+            <div>
+              <div class="settings-name">匯出資料</div>
+              <div class="settings-desc">下載 JSON 格式備份</div>
+            </div>
+          </div>
+          <button class="btn-secondary" id="btnExport">匯出</button>
+        </div>
+
+        <div class="settings-row" style="margin-top:8px">
+          <div class="settings-label">
+            <span class="settings-icon">🗑️</span>
+            <div>
+              <div class="settings-name">清除所有資料</div>
+              <div class="settings-desc">不可還原，請謹慎操作</div>
+            </div>
+          </div>
+          <button class="btn-danger" id="btnClearData">清除</button>
+        </div>
+      </div>
+
+      <!-- PWA Info -->
+      <div class="settings-group card" id="pwaInfoCard">
+        <div class="settings-group-title">安裝資訊</div>
+        <div class="settings-row">
+          <div class="settings-label">
+            <span class="settings-icon">📱</span>
+            <div>
+              <div class="settings-name" id="pwaStatusText">檢查中...</div>
+              <div class="settings-desc" id="pwaStatusDesc"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Version -->
+      <div class="settings-footer">
+        <p>健康日記 v1.0.0</p>
+        <p>資料儲存於本機裝置</p>
+      </div>
+
+    </section><!-- /pageSettings -->
+
+  </main><!-- /app-main -->
+
+
+  <!-- ── TAB BAR ─────────────────────────────────────────── -->
+  <nav class="tab-bar" role="tablist" aria-label="主選單">
+    <button class="tab-btn active" data-tab="today" role="tab" aria-selected="true" aria-label="今日">
+      <span class="tab-icon">📝</span>
+      <span class="tab-label">今日</span>
+    </button>
+    <button class="tab-btn" data-tab="history" role="tab" aria-selected="false" aria-label="歷史">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">歷史</span>
+    </button>
+    <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false" aria-label="設定">
+      <span class="tab-icon">⚙️</span>
+      <span class="tab-label">設定</span>
+    </button>
+  </nav>
+
+
+  <!-- ── WEIGHT MODAL ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="weightModalOverlay" hidden aria-modal="true" role="dialog" aria-label="記錄體重">
+    <div class="bottom-sheet" id="weightModal">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">記錄體重</h2>
+        <button class="sheet-close" id="btnCloseWeight" aria-label="關閉">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="weight-input-group">
+          <button class="weight-adj-btn" id="btnWeightMinus" aria-label="減少 0.1">－</button>
+          <input type="number" id="weightInput" class="weight-input-field"
+                 step="0.1" min="20" max="300" placeholder="60.0" inputmode="decimal" />
+          <button class="weight-adj-btn" id="btnWeightPlus" aria-label="增加 0.1">＋</button>
+        </div>
+        <div class="weight-input-unit">公斤 (kg)</div>
+        <div class="quick-presets" id="weightPresets">
+          <!-- dynamically filled -->
+        </div>
+        <button class="btn-primary btn-full" id="btnSaveWeight">儲存體重</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── MEAL MODAL ────────────────────────────────────────── -->
+  <div class="modal-overlay" id="mealModalOverlay" hidden aria-modal="true" role="dialog" aria-label="記錄飲食">
+    <div class="bottom-sheet" id="mealModal">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title" id="mealModalTitle">記錄早餐</h2>
+        <button class="sheet-close" id="btnCloseMeal" aria-label="關閉">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="meal-hints" id="mealHints">
+          <!-- quick select hints -->
+        </div>
+        <textarea id="mealInput" class="meal-textarea"
+                  placeholder="描述今天吃了什麼...（例如：燕麥粥加藍莓、全麥吐司2片）"
+                  rows="4"></textarea>
+        <div class="cal-input-row">
+          <label class="cal-label" for="calInput">熱量估算</label>
+          <div class="cal-input-group">
+            <input type="number" id="calInput" class="cal-input-field"
+                   min="0" max="5000" placeholder="0" inputmode="numeric" />
+            <span class="cal-unit">kcal</span>
+          </div>
+        </div>
+        <div class="cal-quick">
+          <span class="cal-quick-label">快速填入：</span>
+          <button class="cal-quick-btn" data-cal="300">300</button>
+          <button class="cal-quick-btn" data-cal="500">500</button>
+          <button class="cal-quick-btn" data-cal="700">700</button>
+          <button class="cal-quick-btn" data-cal="800">800</button>
+          <button class="cal-quick-btn" data-cal="1000">1000</button>
+        </div>
+        <button class="btn-primary btn-full" id="btnSaveMeal">儲存飲食</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── CLAUDE AI MODAL ───────────────────────────────────── -->
+  <div class="modal-overlay" id="claudeModalOverlay" hidden aria-modal="true" role="dialog" aria-label="AI 健康分析">
+    <div class="bottom-sheet large-sheet" id="claudeModal">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">🤖 AI 健康分析</h2>
+        <button class="sheet-close" id="btnCloseClaude" aria-label="關閉">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="ai-response" id="aiResponse">
+          <div class="ai-loading" id="aiLoading">
+            <div class="spinner"></div>
+            <p>Claude 正在分析您的健康資料...</p>
+          </div>
+          <div class="ai-content" id="aiContent" hidden></div>
+          <div class="ai-error" id="aiError" hidden></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── TOAST ─────────────────────────────────────────────── -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
