@@ -105,7 +105,7 @@ self.addEventListener('push', event => {
   let data = {
     title: '健康日記提醒 ⏰',
     body:  '記得記錄今天的體重和飲食喔！',
-    url:   '/?tab=today',
+    url:   '/health-pwa/?tab=today',
   };
 
   if (event.data) {
@@ -125,7 +125,7 @@ self.addEventListener('push', event => {
     tag:     'health-reminder',
     renotify: true,
     requireInteraction: false,
-    data:    { url: data.url },
+    data:    { url: data.url || '/health-pwa/' },
     actions: [
       { action: 'open',    title: '立即記錄' },
       { action: 'dismiss', title: '稍後提醒' },
