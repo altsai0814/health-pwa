@@ -20,7 +20,10 @@ const KEYS = {
   CLAUDE_KEY:    'health_claude_key',
   PROXY_URL:     'health_proxy_url',
   PUSH_SUB:      'health_push_subscription',
+  AI_USAGE:      'health_ai_usage',
 };
+
+const AI_DAILY_LIMIT = 3; // 每日最多呼叫次數
 
 // ─── Storage ───────────────────────────────────────────────────────
 const Storage = {
@@ -506,6 +509,16 @@ const App = {
       setTimeout(() => { overlay.hidden = true; }, 300);
     };
 
+    // 更新 🤖 按鈕顯示剩餘次數
+    const updateSyncBtn = () => {
+      const used = getAiUsageToday();
+      const left = AI_DAILY_LIMIT - used;
+      const btn  = document.getElementById('btnSync');
+      btn.title = left > 0 ? `AI 健康分析（今日剩餘 ${left} 次）` : '今日已達上限';
+      btn.style.opacity = left > 0 ? '1' : '0.4';
+    };
+    updateSyncBtn();
+
     document.getElementById('btnSync').addEventListener('click', async () => {
       const apiKey  = Storage.get(KEYS.CLAUDE_KEY);
       const proxyUrl = Storage.get(KEYS.PROXY_URL);
@@ -657,11 +670,39 @@ function sendLocalNotification() {
   });
 }
 
+// ─── AI 使用量追蹤 ─────────────────────────────────────────────────
+function getAiUsageToday() {
+  const today = DateUtil.todayStr();
+  const usage = Storage.getJSON(KEYS.AI_USAGE, {});
+  return usage[today] || 0;
+}
+
+function incrementAiUsage() {
+  const today = DateUtil.todayStr();
+  const usage = Storage.getJSON(KEYS.AI_USAGE, {});
+  usage[today] = (usage[today] || 0) + 1;
+  // 只保留近 7 天記錄，避免 localStorage 膨脹
+  const keep = DateUtil.getLast7Days();
+  Object.keys(usage).forEach(d => { if (!keep.includes(d)) delete usage[d]; });
+  Storage.setJSON(KEYS.AI_USAGE, usage);
+}
+
 // ─── Claude AI Sync ────────────────────────────────────────────────
 let lastSyncTime = 0;
 const SYNC_COOLDOWN_MS = 60_000;
 
 async function syncWithClaude(apiKey, proxyUrl) {
+  // 每日次數限制
+  const usedToday = getAiUsageToday();
+  if (usedToday >= AI_DAILY_LIMIT) {
+    showToast(`今日 AI 分析已達上限（${AI_DAILY_LIMIT} 次），明天再來！`);
+    document.getElementById('aiLoading').style.display = 'none';
+    document.getElementById('claudeModalOverlay').classList.remove('visible');
+    setTimeout(() => { document.getElementById('claudeModalOverlay').hidden = true; }, 300);
+    return;
+  }
+
+  // 60 秒冷卻
   const now = Date.now();
   const elapsed = now - lastSyncTime;
   if (elapsed < SYNC_COOLDOWN_MS) {
@@ -717,9 +758,13 @@ async function syncWithClaude(apiKey, proxyUrl) {
       if (i < arr.length - 1) aiText.appendChild(document.createElement('br'));
     });
 
+    // 呼叫成功才計數
+    incrementAiUsage();
+    const remaining = AI_DAILY_LIMIT - getAiUsageToday();
+
     const aiTs = document.createElement('div');
     aiTs.className = 'ai-timestamp';
-    aiTs.textContent = `分析時間：${new Date().toLocaleString('zh-TW')}`;
+    aiTs.textContent = `分析時間：${new Date().toLocaleString('zh-TW')}　｜　今日剩餘 ${remaining} 次`;
 
     contentEl.appendChild(aiText);
     contentEl.appendChild(aiTs);
