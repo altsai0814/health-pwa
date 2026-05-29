@@ -6,7 +6,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────
 const CONFIG = {
-  GEMINI_MODEL: 'gemini-2.0-flash',
+  GEMINI_MODEL: 'gemini-1.5-flash',
   MAX_TOKENS: 1024,
 };
 
