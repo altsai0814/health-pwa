@@ -22,7 +22,7 @@
     <div class="header-content">
       <h1 class="header-title" id="headerTitle">今日記錄</h1>
       <div class="header-actions">
-        <button class="header-btn" id="btnSync" title="同步到 Claude AI" aria-label="AI 分析">
+        <button class="header-btn" id="btnSync" title="同步到 Gemini AI" aria-label="AI 分析">
           🤖
         </button>
       </div>
@@ -179,23 +179,11 @@
                placeholder="Base64 VAPID Public Key（選填）" autocomplete="off" />
       </div>
 
-      <!-- Claude AI -->
+      <!-- Gemini AI -->
       <div class="settings-group card">
-        <div class="settings-group-title">Claude AI 健康分析</div>
+        <div class="settings-group-title">Gemini AI 健康分析</div>
 
-        <div class="settings-row">
-          <div class="settings-label">
-            <span class="settings-icon">🤖</span>
-            <div>
-              <div class="settings-name">API 金鑰</div>
-              <div class="settings-desc">Anthropic API Key</div>
-            </div>
-          </div>
-        </div>
-        <input type="password" id="claudeApiKey" class="settings-input-full"
-               placeholder="sk-ant-..." autocomplete="off" />
-
-        <div class="settings-row" style="margin-top:12px">
+        <div class="settings-row" style="margin-top:4px">
           <div class="settings-label">
             <span class="settings-icon">🌐</span>
             <div>
@@ -353,7 +341,7 @@
         <div class="ai-response" id="aiResponse">
           <div class="ai-loading" id="aiLoading">
             <div class="spinner"></div>
-            <p>Claude 正在分析您的健康資料...</p>
+            <p>Gemini 正在分析您的健康資料...</p>
           </div>
           <div class="ai-content" id="aiContent" hidden></div>
           <div class="ai-error" id="aiError" hidden></div>

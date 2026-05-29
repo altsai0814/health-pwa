@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker — Claude API CORS Proxy
+ * Cloudflare Worker — Gemini API CORS Proxy
  *
  * Deploy Steps:
  * 1. Go to https://workers.cloudflare.com/
@@ -20,14 +20,14 @@ function corsHeaders(origin) {
   const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowed,
-    'Access-Control-Allow-Headers': 'Content-Type, x-claude-api-key',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
 
     // 拒絕非白名單來源
@@ -44,11 +44,11 @@ export default {
       return new Response('Method Not Allowed', { status: 405 });
     }
 
-    // Get API key from custom header (never expose in URL)
-    const apiKey = request.headers.get('x-claude-api-key');
+    // API key 存在 Worker Secret，前端不需要傳
+    const apiKey = env.GEMINI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: { message: 'Missing x-claude-api-key header' } }), {
-        status: 401,
+      return new Response(JSON.stringify({ error: { message: 'GEMINI_API_KEY not configured in Worker' } }), {
+        status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -63,15 +63,16 @@ export default {
       });
     }
 
-    // Forward request to Anthropic API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Extract model from body, forward the rest to Gemini API
+    const { model, ...geminiBody } = body;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'x-api-key': apiKey,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(geminiBody),
     });
 
     const result = await response.json();

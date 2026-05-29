@@ -6,8 +6,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────
 const CONFIG = {
-  CLAUDE_MODEL: 'claude-haiku-4-5-20251001',
-  ANTHROPIC_VERSION: '2023-06-01',
+  GEMINI_MODEL: 'gemini-2.0-flash',
   MAX_TOKENS: 1024,
 };
 
@@ -17,7 +16,6 @@ const KEYS = {
   PUSH_ENABLED:  'health_push_enabled',
   REMIND_TIME:   'health_remind_time',
   VAPID_KEY:     'health_vapid_key',
-  CLAUDE_KEY:    'health_claude_key',
   PROXY_URL:     'health_proxy_url',
   PUSH_SUB:      'health_push_subscription',
   AI_USAGE:      'health_ai_usage',
@@ -328,11 +326,6 @@ const App = {
     document.getElementById('pushToggle').checked = Storage.get(KEYS.PUSH_ENABLED) === 'true';
     document.getElementById('reminderTime').value  = Storage.get(KEYS.REMIND_TIME) || '20:00';
     document.getElementById('vapidKey').value      = Storage.get(KEYS.VAPID_KEY) || '';
-    // 不回填 API Key 到欄位，只顯示是否已設定的狀態
-    const hasKey = !!Storage.get(KEYS.CLAUDE_KEY);
-    const keyInput = document.getElementById('claudeApiKey');
-    keyInput.value = '';
-    keyInput.placeholder = hasKey ? '已設定（輸入新金鑰以更換）' : 'sk-ant-...';
     document.getElementById('proxyUrl').value      = Storage.get(KEYS.PROXY_URL) || '';
 
     // PWA standalone detection
@@ -520,14 +513,8 @@ const App = {
     updateSyncBtn();
 
     document.getElementById('btnSync').addEventListener('click', async () => {
-      const apiKey  = Storage.get(KEYS.CLAUDE_KEY);
       const proxyUrl = Storage.get(KEYS.PROXY_URL);
 
-      if (!apiKey) {
-        showToast('請先在設定中填入 Claude API 金鑰');
-        Router.navigate('settings');
-        return;
-      }
       if (!proxyUrl) {
         showToast('請先在設定中填入 CORS Proxy URL');
         Router.navigate('settings');
@@ -540,7 +527,7 @@ const App = {
       overlay.hidden = false;
       setTimeout(() => overlay.classList.add('visible'), 10);
 
-      await syncWithClaude(apiKey, proxyUrl);
+      await syncWithGemini(proxyUrl);
     });
 
     document.getElementById('btnCloseClaude').addEventListener('click', close);
@@ -568,12 +555,8 @@ const App = {
 
     // Save AI settings
     document.getElementById('btnSaveAi').addEventListener('click', () => {
-      const key   = document.getElementById('claudeApiKey').value.trim();
       const proxy = document.getElementById('proxyUrl').value.trim();
       const vapid = document.getElementById('vapidKey').value.trim();
-
-      // 只有輸入了新值才更新，空白代表「保留舊的」
-      if (key) Storage.set(KEYS.CLAUDE_KEY, key);
 
       if (proxy) Storage.set(KEYS.PROXY_URL, proxy);
       else Storage.remove(KEYS.PROXY_URL);
@@ -581,8 +564,6 @@ const App = {
       if (vapid) Storage.set(KEYS.VAPID_KEY, vapid);
       else Storage.remove(KEYS.VAPID_KEY);
 
-      // 儲存後清空欄位，避免金鑰留在 DOM 中
-      document.getElementById('claudeApiKey').value = '';
       App.renderSettings();
       showToast('AI 設定已儲存 ✓');
     });
@@ -687,11 +668,11 @@ function incrementAiUsage() {
   Storage.setJSON(KEYS.AI_USAGE, usage);
 }
 
-// ─── Claude AI Sync ────────────────────────────────────────────────
+// ─── Gemini AI Sync ────────────────────────────────────────────────
 let lastSyncTime = 0;
 const SYNC_COOLDOWN_MS = 60_000;
 
-async function syncWithClaude(apiKey, proxyUrl) {
+async function syncWithGemini(proxyUrl) {
   // 每日次數限制
   const usedToday = getAiUsageToday();
   if (usedToday >= AI_DAILY_LIMIT) {
@@ -724,16 +705,19 @@ async function syncWithClaude(apiKey, proxyUrl) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-claude-api-key': apiKey,
       },
       body: JSON.stringify({
-        model: CONFIG.CLAUDE_MODEL,
-        max_tokens: CONFIG.MAX_TOKENS,
-        system: '你是一位專業的健康顧問，請根據使用者提供的飲食和體重記錄，給予具體、友善、實用的健康建議。回覆使用繁體中文，控制在 300 字以內。',
-        messages: [{
+        model: CONFIG.GEMINI_MODEL,
+        system_instruction: {
+          parts: [{ text: '你是一位專業的健康顧問，請根據使用者提供的飲食和體重記錄，給予具體、友善、實用的健康建議。回覆使用繁體中文，控制在 300 字以內。' }],
+        },
+        contents: [{
           role: 'user',
-          content: summary,
+          parts: [{ text: summary }],
         }],
+        generationConfig: {
+          maxOutputTokens: CONFIG.MAX_TOKENS,
+        },
       }),
     });
 
@@ -743,7 +727,7 @@ async function syncWithClaude(apiKey, proxyUrl) {
     }
 
     const data = await resp.json();
-    const text = data?.content?.[0]?.text || '無回應內容';
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '無回應內容';
 
     loadingEl.style.display = 'none';
     contentEl.hidden = false;
@@ -776,7 +760,7 @@ async function syncWithClaude(apiKey, proxyUrl) {
 
     const errMsg = document.createElement('div');
     errMsg.className = 'ai-error-msg';
-    errMsg.textContent = '⚠️ 無法連線到 Claude AI';
+    errMsg.textContent = '⚠️ 無法連線到 Gemini AI';
 
     const errDetail = document.createElement('div');
     errDetail.className = 'ai-error-detail';
@@ -784,7 +768,7 @@ async function syncWithClaude(apiKey, proxyUrl) {
 
     const errTip = document.createElement('div');
     errTip.className = 'ai-error-tip';
-    errTip.textContent = '請確認：1. Claude API 金鑰是否正確  2. Cloudflare Worker CORS Proxy 是否已部署  3. 網路連線是否正常';
+    errTip.textContent = '請確認：1. Gemini API 金鑰是否正確  2. Cloudflare Worker CORS Proxy 是否已部署  3. 網路連線是否正常';
 
     errorEl.appendChild(errMsg);
     errorEl.appendChild(errDetail);
